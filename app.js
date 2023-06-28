@@ -2,7 +2,8 @@ const express = require("express");
 const ejs = require("ejs");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const { Atlas_NewUSER, Atlas_Finder } = require("./config/db");
+// const { Atlas_NewUSER, Atlas_Finder } = require("./config/db");
+require("dotenv").config();
 
 const Atlas = require(__dirname + "/config/db.js");
 
@@ -27,7 +28,7 @@ app
     const username = req.body.username;
     const password = req.body.password;
 
-    const responde = await Atlas_Finder(username, password, "login");
+    const responde = await Atlas.Atlas_Finder(username, password, "login");
 
     if (responde) {
       res.render("secrets.ejs");

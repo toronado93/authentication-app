@@ -28,12 +28,12 @@ const Atlas_Finder = async (email, password, operation_type) => {
     const responde = await User.exists({ email: email });
     return responde;
   } else if (operation_type === "login") {
-    const rspn1 = await User.exists({ email: email });
+    const user = await User.exists({ email: email });
 
-    if (rspn1) {
-      const rspn2 = await User.findOne({ email: email });
+    if (user) {
+      const user_data = await User.findOne({ email: email });
 
-      if (rspn2.password === password) {
+      if (password === user_data.password) {
         return true;
       }
     }
