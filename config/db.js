@@ -2,6 +2,10 @@ require("dotenv").config();
 const { default: mongoose } = require("mongoose");
 const User = require("/Users/ertac/Desktop/Local Project Storage/Node JS/Secrets - Starting Code/models/user.js");
 
+// Hashing Settings
+const bcrypt = require("bcrypt");
+const saltRounds = 12;
+
 const Monk_Url = process.env.MONGO_URL;
 const Monk_Object = {
   useNewUrlParser: true,
@@ -33,9 +37,8 @@ const Atlas_Finder = async (email, password, operation_type) => {
     if (user) {
       const user_data = await User.findOne({ email: email });
 
-      if (password === user_data.password) {
-        return true;
-      }
+      //   Check the password
+      return bcrypt.compareSync(password, user_data.password); // return true or false
     }
   }
 };
@@ -44,7 +47,10 @@ const Atlas_Finder = async (email, password, operation_type) => {
 const Atlas_NewUSER = async (email, password) => {
   // Firstly Check If the user Exist Turn Customer failure
 
-  const new_user = new User({ email: email, password: password });
+  //   Change user plain password in to the hash and add some salt.
+  const hash = bcrypt.hashSync(password, saltRounds);
+
+  const new_user = new User({ email: email, password: hash });
 
   try {
     const responde = new_user.save();
