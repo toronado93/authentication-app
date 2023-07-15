@@ -2,20 +2,97 @@ const express = require("express");
 const ejs = require("ejs");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-
-// const { Atlas_NewUSER, Atlas_Finder } = require("./config/db");
 require("dotenv").config();
-
 const Atlas = require(__dirname + "/config/db.js");
-
 const app = express();
+const User = require("/Users/ertac/Desktop/Local Project Storage/Node JS/Secrets - Starting Code/models/user.js");
+const bcrypt = require("bcrypt");
+const session = require("express-session");
+const { v4: uuidvrs4 } = require("uuid");
+const FileStore = require("session-file-store")(session);
+
+// Passport JS
+const localStrategy = require("passport-local");
+const passport = require("passport");
+
+// Middleware
 app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
+
+// Creating new session
+app.use(
+  session({
+    genid: (req) => {
+      //   console.log("1. in genid req.sessionID: ", req.sessionID);
+      return uuidvrs4();
+    },
+    // store: new FileStore(),
+    secret: "a private key",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
+
+// Initialize passport
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Serialize
+passport.serializeUser((user, done) => {
+  // In this process we fill user info into the session object
+  console.log("Serialized id", user);
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  console.log("Deserialized");
+  try {
+    const user = await User.findById(id);
+    console.log(user);
+    done(null, user);
+  } catch (error) {
+    done(error);
+  }
+});
+
+// Passport skeleton
+passport.use(
+  "login",
+  new localStrategy(
+    {
+      //if your input name is different then username and password
+      // you need to redirect them. if they are standart username and password
+      //you dont need to add this first object argument
+      usernameField: "username",
+      passwordField: "password",
+    },
+    async (username, password, done) => {
+      try {
+        console.log("Authentication query");
+        const user = await User.findOne({ email: username });
+
+        // If user is not found or password is incorrect
+        if (!user || !bcrypt.compareSync(password, user.password)) {
+          console.log("User isnt exist or passsword not correct");
+          return done(null, false);
+        }
+
+        // If authentication is succesfull
+        return done(null, user);
+      } catch (error) {
+        return done(error);
+      }
+    }
+  )
+);
 
 // Atlas Connection
 Atlas.Atlas_Connection();
 
 app.get("/", (req, res) => {
+  //   console.log("Current Session ID: ", req.sessionID);
+  //   console.log(req.session);
   res.render("home");
 });
 
@@ -24,18 +101,29 @@ app
   .get((req, res) => {
     res.render("login");
   })
-  .post(async (req, res) => {
-    // Matched user password if everything is correct open secrets.ejs
-    const username = req.body.username;
-    const password = req.body.password;
+  .post((req, res, next) => {
+    passport.authenticate("login", (err, user, info) => {
+      if (err) {
+        return next(err);
+      }
+      if (!user) {
+        // Authentication failed, render login page again
+        return res.render("login.ejs");
+      }
+      console.log("Authentication success");
 
-    const responde = await Atlas.Atlas_Finder(username, password, "login");
-
-    if (responde) {
-      res.render("secrets.ejs");
-    } else {
-      res.send("Password is wrong or user not exist...");
-    }
+      //   Since we use manuall callback function , we are responsible to trigger
+      // passport serialized as well.
+      // Manually trigger passport.serializeUser
+      req.login(user, (err) => {
+        if (err) {
+          return next(err);
+        }
+        console.log("Authentication success");
+        // Authentication successful, render the HTML page directly
+        return res.render("secrets.ejs");
+      });
+    })(req, res, next);
   });
 
 app.get("/logout", (req, res) => {

@@ -49,7 +49,7 @@ const Atlas_NewUSER = async (email, password) => {
 
   //   Change user plain password in to the hash and add some salt.
   const hash = bcrypt.hashSync(password, saltRounds);
-
+  console.log(email, hash);
   const new_user = new User({ email: email, password: hash });
 
   try {
